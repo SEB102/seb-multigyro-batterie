@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>SEB-MULTIGYRO-BATTERIE — téléphone</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="SEB-MULTIGYRO-BATTERIE">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="theme-color" content="#111111">
+<style>
+  :root { --fond: #111; --texte: #eee; --gc: #e8643c; --cy: #e8c43c; --doux: #888; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--fond); color: var(--texte); font: 16px -apple-system, system-ui, sans-serif;
+         min-height: 100vh; display: flex; flex-direction: column; padding: 16px; gap: 14px; -webkit-user-select: none; user-select: none; }
+  h1 { font-size: 20px; margin: 0; }
+  #etat { color: var(--doux); font-size: 14px; }
+  #etat.ok { color: #6c6; }
+  button { font: inherit; font-size: 20px; padding: 18px; border: 0; border-radius: 12px; background: #2a6; color: #fff; }
+  button.secondaire { font-size: 15px; padding: 12px; background: #2a2a2a; color: var(--texte); }
+  #flash { flex: 1; min-height: 160px; border-radius: 16px; background: #1c1c1c; display: flex; align-items: center;
+           justify-content: center; font-size: 28px; font-weight: 600; transition: background .25s; }
+  .jauges { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; align-items: center; font-size: 13px; color: var(--doux); }
+  .jauge { height: 10px; background: #222; border-radius: 5px; position: relative; overflow: hidden; }
+  .jauge i { position: absolute; top: 0; bottom: 0; left: 50%; background: #48f; }
+  label { display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--doux); }
+  select, input[type=range] { flex: 1; font: inherit; }
+  .reglages { display: flex; flex-direction: column; gap: 10px; }
+  .cartouche { margin-top: 8px; border-top: 1px solid #2a2a2a; text-align: center; color: var(--doux); font-size: 12px; letter-spacing: .12em; line-height: 1.7; padding: 10px 0 0; }
+  .cartouche a { color: #a9b6ff; text-decoration: underline; text-underline-offset: 3px; }
+</style>
+</head>
+<body>
+<h1 id="titre">SEB-MULTIGYRO-BATTERIE</h1>
+<div id="etat">Non connecté</div>
+<button id="demarrer">Démarrer</button>
+<div id="flash">—</div>
+<div class="jauges">
+  <span>1</span><div class="jauge"><i id="j0"></i></div>
+  <span>2</span><div class="jauge"><i id="j1"></i></div>
+  <span>3</span><div class="jauge"><i id="j2"></i></div>
+</div>
+<div class="reglages">
+  <button id="calibrer" class="secondaire">Recalibrer (3 coups)</button>
+  <label>Sensibilité <input type="range" id="seuil" min="0" max="100" step="1"> <span id="vseuil"></span></label>
+</div>
+
+<footer class="cartouche">SEB-MULTIGYRO-BATTERIE · Sébastien Gay · Octobre 2026 · <a href="https://github.com/SEB102/seb-multigyro-batterie#readme" target="_blank" rel="noopener">Mode d'emploi</a> · <a href="https://github.com/SEB102/seb-multigyro-batterie/blob/main/LICENSE" target="_blank" rel="noopener">Licence CC BY-NC 4.0</a><br>Connexion : <a href="https://peerjs.com" target="_blank" rel="noopener">PeerJS</a> (MIT) · QR code : <a href="https://github.com/kazuhikoarase/qrcode-generator" target="_blank" rel="noopener">qrcode-generator</a> par Kazuhiko Arase (MIT)</footer>
+<div id="version" style="font-size:11px;color:#555">version 2026-10-21d</div>
+<script>
+// Toute erreur s'affiche à l'écran (pas de console sur un téléphone)
+const montrerErreur = (m) => { const e = document.getElementById('etat'); e.textContent = 'Erreur : ' + m; e.className = ''; e.style.color = '#e66'; };
+window.onerror = (msg, src, ligne) => montrerErreur(`${msg} (${(src || '').split('/').pop()}:${ligne})`);
+window.onunhandledrejection = (e) => montrerErreur(e.reason && e.reason.message || e.reason);
+</script>
+<script src="detecteur.js?v=20261021d"></script>
+<script src="peerjs.min.js?v=20261021d"></script>
+<script src="liaison.js?v=20261021d"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+const memo = (() => { try { return JSON.parse(localStorage.getItem('gyro-batterie') || '{}'); } catch { return {}; } })();
+const reglages = { seuil: memo.seuil || 250, calibration: memo.calibration || null };
+const prochainSon = Detecteur.creerAlternance();   // grosse caisse, cymbale, grosse caisse…
+const sauver = () => { try { localStorage.setItem('gyro-batterie', JSON.stringify(reglages)); } catch {} };
+
+// Sensibilité : réglable ici ou depuis l'ordinateur (curseur à droite = gestes plus légers)
+let detecteur;
+function appliquerSeuil(seuil) {
+  reglages.seuil = seuil; sauver();
+  detecteur = Detecteur.creerDetecteur({ seuil });
+  const p = Detecteur.seuilVersSensibilite(seuil);
+  $('seuil').value = p; $('vseuil').textContent = p + ' %';
+}
+appliquerSeuil(reglages.seuil);
+$('seuil').oninput = (e) => appliquerSeuil(Detecteur.sensibiliteVersSeuil(Number(e.target.value)));
+
+// Ce que l'ordinateur envoie : réglage de sensibilité, et (version multi) l'instrument de ce téléphone
+let affichage = null;   // { numero, couleur, noms: [son 1, son 2] }
+function surMessage(d) {
+  if (d.reglage && typeof d.reglage.seuil === 'number') appliquerSeuil(d.reglage.seuil);
+  if (d.affichage) {
+    affichage = d.affichage;
+    $('titre').textContent = `Téléphone ${affichage.numero} · ${[...new Set(affichage.noms)].join(' / ')}`;
+    $('titre').style.color = affichage.couleur;
+  }
+}
+
+let liaison = null;
+const envoyer = (o) => liaison && liaison.envoyer(o);
+const etat = (texte, ok) => { $('etat').textContent = texte; $('etat').className = ok ? 'ok' : ''; };
+
+// ---- Lecture du capteur, quel que soit le téléphone ----
+// Gyroscope si présent ; sinon accéléromètre (sans gravité, ou avec gravité retirée par un filtre).
+let gravite = null;
+function lireAxes(e) {
+  const r = e.rotationRate;
+  if (r && [r.alpha, r.beta, r.gamma].some((v) => typeof v === 'number')) return { source: 'gyro', axes: [r.alpha || 0, r.beta || 0, r.gamma || 0] };
+  const a = e.acceleration;
+  if (a && typeof a.x === 'number') return { source: 'accel', axes: [a.x, a.y || 0, a.z || 0] };
+  const g = e.accelerationIncludingGravity;
+  if (g && typeof g.x === 'number') {
+    const brut = [g.x, g.y || 0, g.z || 0];
+    gravite = gravite ? gravite.map((v, i) => 0.9 * v + 0.1 * brut[i]) : brut;
+    return { source: 'accelg', axes: brut.map((v, i) => v - gravite[i]) };
+  }
+  return null;
+}
+
+// ---- Calibration : 3 coups vers le bas ----
+const DUREE_CALIBRATION = 4500;
+let calibration = null;   // { debut, echantillons } pendant la calibration
+function lancerCalibration() {
+  calibration = { debut: performance.now(), echantillons: [] };
+  $('flash').style.background = '#234'; $('flash').style.color = '';
+}
+function suivreCalibration(lu, t) {
+  if (t < calibration.debut) return;   // pause après un essai raté, le message reste affiché
+  calibration.echantillons.push({ t, axes: lu.axes });
+  const reste = Math.ceil((DUREE_CALIBRATION - (t - calibration.debut)) / 1000);
+  $('flash').textContent = `Frappe 3 fois… ${reste}`;
+  if (t - calibration.debut < DUREE_CALIBRATION) return;
+  const res = Detecteur.calibrer(calibration.echantillons);
+  if (!res) {
+    $('flash').textContent = 'Pas compris, on recommence';
+    calibration = { debut: t + 1500, echantillons: [] };
+    return;
+  }
+  reglages.calibration = { ...res, source: lu.source }; sauver();
+  calibration = null;
+  $('flash').style.background = ''; $('flash').textContent = 'Prêt : frappe !';
+}
+
+// ---- Jeu ----
+let dernierEnvoi = 0, timerFlash, maxAxes = [1, 1, 1], recu = false;
+function surMouvement(e) {
+  const lu = lireAxes(e); if (!lu) return;
+  recu = true;
+  const t = performance.now();
+  lu.axes.forEach((v, i) => {   // jauges : chaque axe relativement à son maximum
+    maxAxes[i] = Math.max(maxAxes[i], Math.abs(v));
+    const n = v / maxAxes[i], el = $('j' + i);
+    el.style.left = (n < 0 ? 50 + n * 50 : 50) + '%'; el.style.width = Math.abs(n) * 50 + '%';
+  });
+  if (calibration) return suivreCalibration(lu, t);
+  const cal = reglages.calibration;
+  if (!cal || cal.source !== lu.source) return lancerCalibration();
+
+  const vitesse = lu.axes[cal.axe] * cal.signe * cal.facteur;
+  const coup = detecteur.traiter(vitesse, t);
+  if (coup) {
+    const son = prochainSon();   // le sens du geste ne compte plus
+    envoyer({ coup: son, force: coup.force });
+    const gc = son === 'grosse-caisse';
+    $('flash').textContent = affichage ? affichage.noms[gc ? 0 : 1].toUpperCase() : gc ? 'GROSSE CAISSE' : 'CYMBALE';
+    $('flash').style.background = affichage ? affichage.couleur : gc ? 'var(--gc)' : 'var(--cy)';
+    $('flash').style.color = '#111';
+    clearTimeout(timerFlash);
+    timerFlash = setTimeout(() => { $('flash').style.background = ''; $('flash').style.color = ''; }, 150);
+  }
+  if (t - dernierEnvoi > 30) { dernierEnvoi = t; envoyer({ v: Math.round(vitesse), seuil: reglages.seuil }); }
+}
+$('calibrer').onclick = lancerCalibration;
+
+// Autorisation des mouvements : l'iPhone exige un toucher ; Chrome a la même fonction mais accepte
+// en général sans toucher. On essaie donc sans, et le bouton ne sert que si le navigateur refuse.
+const autorisationDemandee = typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function';
+let demarre = false;
+// Une promesse qui ne répond jamais (certains navigateurs) ne doit pas tout bloquer
+const auPlusTard = (promesse, ms, valeur) => Promise.race([promesse, new Promise((r) => setTimeout(() => r(valeur), ms))]);
+
+async function demarrer(parToucher) {
+  if (demarre) return;
+  if (typeof DeviceMotionEvent === 'undefined') return mouvements('Ce navigateur ne donne pas accès aux mouvements');
+  if (autorisationDemandee) {
+    if (parToucher) $('demarrer').textContent = 'Autorisation…';
+    let rep;
+    try { rep = await auPlusTard(DeviceMotionEvent.requestPermission(), parToucher ? 15000 : 1500, 'sans réponse'); }
+    catch (err) { rep = 'erreur : ' + (err && err.message); }
+    if (rep !== 'granted') {
+      $('demarrer').textContent = 'Toucher pour démarrer';
+      if (parToucher) mouvements(rep === 'denied'
+        ? 'Mouvements refusés : fermer l\'onglet, le rouvrir, puis Autoriser'
+        : 'Autorisation des mouvements : ' + rep);
+      return;
+    }
+  }
+  demarre = true;
+  window.addEventListener('devicemotion', surMouvement);
+  try { navigator.wakeLock.request('screen').catch(() => {}); } catch {}   // sans attendre
+  $('demarrer').style.display = 'none';
+  $('flash').textContent = reglages.calibration ? 'Frappe !' : '…';
+  setTimeout(() => { if (!recu) mouvements('Aucun mouvement reçu du capteur'); }, 2500);
+}
+const mouvements = (texte) => { $('flash').textContent = texte; $('flash').style.fontSize = '18px'; };
+$('demarrer').onclick = () => demarrer(true);
+
+// La connexion n'attend pas l'autorisation des mouvements : elle part dès l'ouverture
+liaison = Liaison.telephone({ surEtat: etat, surMessage });
+const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+if (ios) $('demarrer').textContent = 'Toucher pour démarrer';   // ne pas risquer un refus mémorisé
+else demarrer(false);
+</script>
+</body>
+</html>

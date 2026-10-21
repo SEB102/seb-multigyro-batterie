@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SEB-MULTIGYRO-BATTERIE</title>
+<style>
+  :root { --fond: #111; --texte: #eee; --doux: #888; --carte: #1c1c1c; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--fond); color: var(--texte); font: 16px -apple-system, system-ui, sans-serif; padding: 24px 16px; }
+  main { max-width: 1100px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
+  h1 { margin: 0; font-size: 26px; } h1 small { font-size: 14px; color: var(--doux); font-weight: 400; }
+  .doux { color: var(--doux); font-size: 14px; }
+  .connexion { display: flex; gap: 16px; align-items: center; }
+  .connexion > div:last-child { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+  #qr svg { display: block; width: 150px; height: 150px; border-radius: 8px; }
+  #adresse { font: 14px ui-monospace, Menlo, monospace; background: var(--carte); padding: 10px 12px; border-radius: 8px; word-break: break-all; }
+  button { font: inherit; font-size: 16px; padding: 12px 18px; border: 0; border-radius: 10px; background: #2a6; color: #fff; cursor: pointer; }
+  button.secondaire { background: #2a2a2a; color: var(--texte); font-size: 14px; padding: 8px 12px; }
+  .barre { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; }
+  #telephones { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+  .tel { background: var(--carte); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 10px;
+         border-top: 6px solid var(--c); transition: background .35s; }
+  .tel.coup { background: color-mix(in srgb, var(--c) 45%, var(--carte)); transition: none; }
+  .tel.absent { opacity: .45; }
+  .tel header { display: flex; justify-content: space-between; align-items: baseline; }
+  .tel b { font-size: 18px; color: var(--c); }
+  .tel label { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--doux); }
+  .tel select { flex: 1; font: inherit; font-size: 14px; padding: 6px; background: #262626; color: var(--texte); border: 1px solid #333; border-radius: 6px; }
+  .vide { color: var(--doux); font-size: 14px; padding: 30px; text-align: center; background: var(--carte); border-radius: 14px; }
+  @media (max-width: 500px) { .connexion { flex-direction: column; align-items: stretch; } #qr svg { margin: 0 auto; } }
+  /* Tant que le navigateur bloque le son : voile sur toute la page, impossible à manquer */
+  #activer { position: fixed; inset: 0; z-index: 10; border-radius: 0; background: rgba(10, 10, 10, .88); color: #fff; font-size: 28px; font-weight: 600; line-height: 1.5; }
+  #activer small { font-size: 18px; font-weight: 400; color: #e8c43c; }
+  .reseau { font-size: 15px; font-weight: 600; color: #e8c43c; }
+  .cartouche { margin-top: 28px; border-top: 1px solid #2a2a2a; text-align: center; color: var(--doux); font-size: 12px; letter-spacing: .12em; line-height: 1.7; padding: 10px 12px 0; }
+  .cartouche a { color: #a9b6ff; text-decoration: underline; text-underline-offset: 3px; }
+  .cartouche a:hover { color: #fff; }
+</style>
+</head>
+<body>
+<main>
+  <h1>SEB-MULTIGYRO-BATTERIE <small>plusieurs téléphones · prototype</small></h1>
+  <div class="connexion">
+    <div id="qr"></div>
+    <div>
+      <div class="reseau">L'ordinateur et les téléphones doivent être connectés au même réseau Wi-Fi.</div>
+      <div class="doux">Chaque téléphone scanne ce QR code (iPhone et Android mélangés) :</div>
+      <div id="adresse">…</div>
+      <div id="etat" class="doux"></div>
+    </div>
+  </div>
+  <div class="barre">
+    <button id="activer">Son coupé par le navigateur<br><small>Cliquer n'importe où pour l'activer</small></button>
+    <button class="secondaire" id="oublier">Oublier les téléphones absents</button>
+  </div>
+  <div id="telephones"><div class="vide">Aucun téléphone pour l'instant</div></div>
+  <div class="doux">Chaque coup d'un téléphone joue à tour de rôle son son 1 puis son son 2 (choisir deux fois le même pour un son fixe).</div>
+</main>
+<footer class="cartouche">SEB-MULTIGYRO-BATTERIE · Sébastien Gay · Octobre 2026 · <a href="https://github.com/SEB102/seb-multigyro-batterie#readme" target="_blank" rel="noopener">Mode d'emploi</a> · <a href="https://github.com/SEB102/seb-multigyro-batterie/blob/main/LICENSE" target="_blank" rel="noopener">Licence CC BY-NC 4.0</a><br>Connexion : <a href="https://peerjs.com" target="_blank" rel="noopener">PeerJS</a> (MIT) · QR code : <a href="https://github.com/kazuhikoarase/qrcode-generator" target="_blank" rel="noopener">qrcode-generator</a> par Kazuhiko Arase (MIT)</footer>
+
+<script src="detecteur.js?v=20261021d"></script>
+<script src="sons.js?v=20261021d"></script>
+<script src="qrcode.js?v=20261021d"></script>
+<script src="peerjs.min.js?v=20261021d"></script>
+<script src="liaison.js?v=20261021d"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+
+// ---- Son ----
+const ctx = new AudioContext({ latencyHint: 'interactive' });
+const sons = creerSons(ctx);
+const NOMS = Object.keys(sons.instruments);
+function majSon() { $('activer').style.display = ctx.state === 'running' ? 'none' : ''; }
+ctx.onstatechange = majSon; majSon();
+const debloquer = () => { if (ctx.state !== 'running') ctx.resume(); };
+addEventListener('pointerdown', debloquer); addEventListener('keydown', debloquer);
+
+// ---- Téléphones : numéro, couleur et sons gardés d'une fois sur l'autre (par identifiant de téléphone) ----
+const COULEURS = ['#e8643c', '#e8c43c', '#4cc38a', '#4c9be8', '#b07ce8', '#e85c9b', '#5fd0d0', '#a4d65e', '#e8964c', '#9aa4b8'];
+const PAIRES = [['Grosse caisse', 'Cymbale'], ['Caisse claire', 'Charleston fermé'], ['Tom grave', 'Tom aigu'], ['Clap', 'Cloche'],
+  ['Wobble « Hé » (ouvert)', 'Wobble « Ho » (fermé)'], ['Charleston fermé', 'Charleston ouvert'], ['Grosse caisse', 'Caisse claire'], ['Tom aigu', 'Cymbale'], ['Cloche', 'Clap']];
+const memo = (() => { try { return JSON.parse(localStorage.getItem('gyro-batterie-multi') || '{}'); } catch { return {}; } })();
+const sauver = () => { try { localStorage.setItem('gyro-batterie-multi', JSON.stringify(memo)); } catch {} };
+const telephones = new Map();   // id → { numero, couleur, noms, vu, el }
+
+function prochainNumero() {
+  const pris = new Set(Object.values(memo).map((m) => m.numero));
+  let n = 1; while (pris.has(n)) n++; return n;
+}
+function telephone(id) {
+  if (telephones.has(id)) return telephones.get(id);
+  if (!memo[id]) { const n = prochainNumero(); memo[id] = { numero: n, noms: PAIRES[(n - 1) % PAIRES.length] }; sauver(); }
+  const m = memo[id];
+  const t = { id, numero: m.numero, noms: m.noms, couleur: COULEURS[(m.numero - 1) % COULEURS.length], vu: 0 };
+  t.el = document.createElement('div');
+  t.el.className = 'tel'; t.el.style.setProperty('--c', t.couleur);
+  const choix = (i) => `<label>Son ${i + 1} <select data-i="${i}">${NOMS.map((n) => `<option${n === t.noms[i] ? ' selected' : ''}>${n}</option>`).join('')}</select></label>`;
+  t.el.innerHTML = `<header><b>Téléphone ${t.numero}</b><span class="doux etat-tel"></span></header>${choix(0)}${choix(1)}<div class="doux sens-tel">Sensibilité : —</div>`;
+  t.el.querySelectorAll('select').forEach((s) => s.onchange = () => {
+    t.noms = [...t.noms]; t.noms[s.dataset.i] = s.value;
+    memo[id].noms = t.noms; sauver(); envoyerAffichage(t);
+    sons.instruments[s.value](0.6);   // écouter le son choisi
+  });
+  telephones.set(id, t);
+  ranger();
+  return t;
+}
+function ranger() {   // cartes dans l'ordre des numéros
+  const zone = $('telephones');
+  const liste = [...telephones.values()].sort((a, b) => a.numero - b.numero);
+  zone.replaceChildren(...(liste.length ? liste.map((t) => t.el) : [Object.assign(document.createElement('div'), { className: 'vide', textContent: 'Aucun téléphone pour l\'instant' })]));
+}
+const envoyerAffichage = (t) => liaison.envoyer({ pour: t.id, affichage: { numero: t.numero, couleur: t.couleur, noms: t.noms } });
+
+// Présence : un téléphone silencieux depuis 4 s est marqué absent (il garde sa place et ses sons)
+setInterval(() => {
+  const maintenant = Date.now();
+  for (const t of telephones.values()) {
+    const present = maintenant - t.vu < 4000;
+    t.el.classList.toggle('absent', !present);
+    t.el.querySelector('.etat-tel').textContent = present ? 'connecté' : 'absent';
+  }
+  const n = [...telephones.values()].filter((t) => maintenant - t.vu < 4000).length;
+  $('etat').textContent = n ? `${n} téléphone${n > 1 ? 's' : ''} connecté${n > 1 ? 's' : ''}` : '';
+}, 500);
+$('oublier').onclick = () => {
+  for (const t of [...telephones.values()]) if (Date.now() - t.vu >= 4000) { telephones.delete(t.id); delete memo[t.id]; }
+  sauver(); ranger();
+};
+
+// ---- Réception ----
+const timers = new Map();
+const liaison = Liaison.ordinateur({
+  cleId: 'gyro-batterie-multi-id',
+  surAdresses(l) {
+    $('adresse').textContent = l.join('\n');
+    if (!l.length) return;
+    const qr = qrcode(0, 'M'); qr.addData(l[0]); qr.make();
+    $('qr').innerHTML = qr.createSvgTag({ cellSize: 4, margin: 2, scalable: true });
+  },
+  surTelephones() {},
+  surProbleme(texte) { if (texte) $('etat').textContent = texte; },
+  surMessage(d) {
+    if (!d || !d.de) return;
+    const t = telephone(d.de);
+    t.vu = Date.now();
+    if (d.bonjour) envoyerAffichage(t);
+    if (d.seuil) t.el.querySelector('.sens-tel').textContent = `Sensibilité : ${Detecteur.seuilVersSensibilite(d.seuil)} % (réglée sur le téléphone)`;
+    if (d.coup) {
+      const nom = t.noms[d.coup === 'grosse-caisse' ? 0 : 1];
+      sons.instruments[nom](d.force);
+      window.__coups && window.__coups.push([t.numero, nom]);   // pour les tests automatiques
+      t.el.classList.add('coup'); clearTimeout(timers.get(t.id));
+      timers.set(t.id, setTimeout(() => t.el.classList.remove('coup'), 120));
+    }
+  },
+});
+</script>
+</body>
+</html>
