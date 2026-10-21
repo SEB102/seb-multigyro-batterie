@@ -50,21 +50,21 @@
 </div>
 
 <footer class="cartouche">SEB-MULTIGYRO-BATTERIE · Sébastien Gay · Octobre 2026 · <a href="https://github.com/SEB102/seb-multigyro-batterie#readme" target="_blank" rel="noopener">Mode d'emploi</a> · <a href="https://github.com/SEB102/seb-multigyro-batterie/blob/main/LICENSE" target="_blank" rel="noopener">Licence CC BY-NC 4.0</a><br>Connexion : <a href="https://peerjs.com" target="_blank" rel="noopener">PeerJS</a> (MIT) · QR code : <a href="https://github.com/kazuhikoarase/qrcode-generator" target="_blank" rel="noopener">qrcode-generator</a> par Kazuhiko Arase (MIT)</footer>
-<div id="version" style="font-size:11px;color:#555">version 2026-10-21f</div>
+<div id="version" style="font-size:11px;color:#555">version 2026-10-21g</div>
 <script>
 // Toute erreur s'affiche à l'écran (pas de console sur un téléphone)
 const montrerErreur = (m) => { const e = document.getElementById('etat'); e.textContent = 'Erreur : ' + m; e.className = ''; e.style.color = '#e66'; };
 window.onerror = (msg, src, ligne) => montrerErreur(`${msg} (${(src || '').split('/').pop()}:${ligne})`);
 window.onunhandledrejection = (e) => montrerErreur(e.reason && e.reason.message || e.reason);
 </script>
-<script src="detecteur.js?v=20261021f"></script>
-<script src="peerjs.min.js?v=20261021f"></script>
-<script src="liaison.js?v=20261021f"></script>
+<script src="detecteur.js?v=20261021g"></script>
+<script src="peerjs.min.js?v=20261021g"></script>
+<script src="liaison.js?v=20261021g"></script>
 <script>
 const $ = (id) => document.getElementById(id);
 const memo = (() => { try { return JSON.parse(localStorage.getItem('gyro-batterie') || '{}'); } catch { return {}; } })();
 const reglages = { seuil: memo.seuil || 250, calibration: memo.calibration || null, precoce: !!memo.precoce };
-const prochainSon = Detecteur.creerAlternance();   // grosse caisse, cymbale, grosse caisse…
+const verticale = Detecteur.creerVerticale();   // sens du coup dans la pièce : vers le sol ou vers le plafond
 const sauver = () => { try { localStorage.setItem('gyro-batterie', JSON.stringify(reglages)); } catch {} };
 
 // Sensibilité : réglable ici ou depuis l'ordinateur (curseur à droite = gestes plus légers)
@@ -167,6 +167,7 @@ function surMouvement(e) {
   const lu = lireAxes(e); if (!lu) return;
   recu = true;
   const t = performance.now();
+  verticale.ajouter(t, e.acceleration, e.accelerationIncludingGravity);
   lu.axes.forEach((v, i) => {   // jauges : chaque axe relativement à son maximum
     maxAxes[i] = Math.max(maxAxes[i], Math.abs(v));
     const n = v / maxAxes[i], el = $('j' + i);
@@ -179,7 +180,9 @@ function surMouvement(e) {
   const vitesse = lu.axes[cal.axe] * cal.signe * cal.facteur;
   const coup = detecteur.traiter(vitesse, t);
   if (coup) {
-    const son = prochainSon();   // le sens du geste ne compte plus
+    // vers le sol → grosse caisse (son 1), vers le plafond → cymbale (son 2) ; sans mesure, sens de rotation
+    const s = verticale.sens();
+    const son = s < 0 ? 'grosse-caisse' : s > 0 ? 'cymbale' : coup.type;
     envoyer({ coup: son, force: coup.force });
     const gc = son === 'grosse-caisse';
     $('flash').textContent = affichage ? affichage.noms[gc ? 0 : 1].toUpperCase() : gc ? 'GROSSE CAISSE' : 'CYMBALE';
