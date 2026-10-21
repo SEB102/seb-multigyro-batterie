@@ -31,6 +31,12 @@ Double-clic sur `LANCER SEB-MULTIGYRO-BATTERIE.command` : serveur local et fenê
 - Décalage de 10 à 40 ms selon le téléphone.
 - Testé avec 10 téléphones simulés ; pas encore avec de vrais téléphones en nombre.
 
+## Déclenchement précoce
+
+Case à cocher sur le téléphone : le coup part **dès que le geste dépasse le seuil**, au lieu d'attendre le sommet du geste. La force du coup est alors estimée d'après la vitesse et son accélération à cet instant (un peu moins fidèle). Le téléphone mesure à chaque coup le temps gagné et affiche la moyenne.
+
+Mesures (navigateur, gestes simulés à 60 mesures/s) : environ **78 ms de gagnés** en moyenne (de 33 à 133 ms selon la vitesse du geste ; plus le geste est lent, plus le gain est grand). Désactivée par défaut : le mode « sommet » reste inchangé.
+
 ## Licence
 
 SEB-MULTIGYRO-BATTERIE · Sébastien Gay · Octobre 2026 · [CC BY-NC 4.0](LICENSE) : partage et adaptation libres en citant l'auteur, sans usage commercial. PeerJS et qrcode-generator gardent leur licence MIT.
