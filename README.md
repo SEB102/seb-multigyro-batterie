@@ -10,7 +10,7 @@ Prototype (étude de faisabilité). Petite sœur de [SEB-GYROBATTERIE](https://g
 
 **Téléphones** : chacun scanne le QR code affiché. **L'ordinateur et les téléphones doivent être connectés au même réseau Wi-Fi.**
 - iPhone : toucher « Toucher pour démarrer » puis autoriser « Mouvement ». Android : démarre tout seul.
-- La première fois : **calibration guidée** : l'écran demande **2 coups secs vers le BAS, puis 2 vers le HAUT** (↓ ↓ ↑ ↑), en tenant le téléphone comme pour jouer. Elle recommence si les 4 coups ne sont pas tous nets.
+- La première fois : **calibration guidée** : l'écran demande **2 coups secs vers le HAUT, puis 2 vers le BAS** (↑ ↑ ↓ ↓), après un court « Prépare-toi », en tenant le téléphone comme pour jouer. Elle recommence si les 4 coups ne sont pas tous nets.
 - **Écran noir verrouillé** (bouton sur le téléphone) : écran entièrement noir, touchers ignorés, on continue de jouer ; **appui long de 2 s** pour revenir. L'écran reste allumé pendant le jeu.
 - **« Voulez-vous fermer l'onglet ? » quand on agite le téléphone** : fonction « Secouer pour annuler » de l'iPhone, à couper dans **Réglages → Accessibilité → Toucher → Secouer pour annuler**.
 
@@ -39,7 +39,7 @@ Le coup part **dès que le geste dépasse le seuil**, sans attendre le sommet du
 
 ## Grosse caisse en bas, cymbale en haut
 
-Un coup **vers le bas** joue le premier son du téléphone, un coup **vers le haut** le second. C'est le **sens de rotation du poignet** qui décide : un coup vers le bas plie toujours le poignet de la même façon, même bras levé. La calibration guidée (2 coups vers le bas, puis 2 vers le haut) apprend quel sens de rotation veut dire « bas » sur ce téléphone et avec cette tenue.
+Un coup **vers le bas** joue le premier son du téléphone, un coup **vers le haut** le second. C'est le **sens de rotation du poignet** qui décide : un coup vers le bas plie toujours le poignet de la même façon, même bras levé. La calibration guidée (2 coups vers le haut, puis 2 vers le bas) apprend quel sens de rotation veut dire « bas » sur ce téléphone et avec cette tenue.
 
 Historique : une version précédente déduisait le sens de la gravité et d'un axe « baguette » appris. Sur un iPhone tenu debout dans la main (enregistrement du 21/10/2026), cet axe était presque vertical et la décision basculait toute seule au moindre mouvement (« tout devient grosse caisse ou cymbale » au bout de 20 à 30 s). Le sens de rotation, lui, reste juste même quand la tenue varie : vérifié en simulation jusqu'à 60° de rotation du téléphone dans la main et ±45° d'inclinaison, en mode « sommet » et « précoce ».
 
