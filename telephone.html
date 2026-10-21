@@ -52,29 +52,29 @@
 <div class="reglages">
   <button id="calibrer" class="secondaire">Refaire la calibration (2 coups vers le bas, 2 vers le haut)</button>
   <label>Sensibilité <input type="range" id="seuil" min="0" max="100" step="1"> <span id="vseuil"></span></label>
-  <label><input type="checkbox" id="precoce"> Déclenchement précoce (dès le début du geste)</label>
   <div id="gain"></div>
   <button id="noir" class="secondaire">Écran noir verrouillé (appui long 2 s pour revenir)</button>
 </div>
 
 <div id="ecranNoir" hidden><div id="indiceNoir">appui long 2 s pour revenir</div></div>
 <footer class="cartouche">SEB-MULTIGYRO-BATTERIE · Sébastien Gay · Octobre 2026 · <a href="https://github.com/SEB102/seb-multigyro-batterie#readme" target="_blank" rel="noopener">Mode d'emploi</a> · <a href="https://github.com/SEB102/seb-multigyro-batterie/blob/main/LICENSE" target="_blank" rel="noopener">Licence CC BY-NC 4.0</a><br>Connexion : <a href="https://peerjs.com" target="_blank" rel="noopener">PeerJS</a> (MIT) · QR code : <a href="https://github.com/kazuhikoarase/qrcode-generator" target="_blank" rel="noopener">qrcode-generator</a> par Kazuhiko Arase (MIT)</footer>
-<div id="version" style="font-size:11px;color:#555">version 2026-10-21n</div>
+<div id="version" style="font-size:11px;color:#555">version 2026-10-21p</div>
 <script>
 // Toute erreur s'affiche à l'écran (pas de console sur un téléphone)
 const montrerErreur = (m) => { const e = document.getElementById('etat'); e.textContent = 'Erreur : ' + m; e.className = ''; e.style.color = '#e66'; };
 window.onerror = (msg, src, ligne) => montrerErreur(`${msg} (${(src || '').split('/').pop()}:${ligne})`);
 window.onunhandledrejection = (e) => montrerErreur(e.reason && e.reason.message || e.reason);
 </script>
-<script src="detecteur.js?v=20261021n"></script>
-<script src="peerjs.min.js?v=20261021n"></script>
-<script src="liaison.js?v=20261021n"></script>
+<script src="detecteur.js?v=20261021p"></script>
+<script src="peerjs.min.js?v=20261021p"></script>
+<script src="liaison.js?v=20261021p"></script>
 <script>
 const $ = (id) => document.getElementById(id);
 const memo = (() => { try { return JSON.parse(localStorage.getItem('gyro-batterie') || '{}'); } catch { return {}; } })();
 // sensibilité par défaut : 80 % (remise une fois à 80 % pour tous, puis réglable comme avant)
 const SEUIL_DEFAUT = Detecteur.sensibiliteVersSeuil(80);
-const reglages = { seuil: memo.defaut80 ? memo.seuil : SEUIL_DEFAUT, defaut80: true, calibration: memo.calibration || null, precoce: !!memo.precoce };
+const reglages = { seuil: memo.defaut80 ? memo.seuil : SEUIL_DEFAUT, defaut80: true, calibration: memo.calibration || null,
+  precoce: true };   // déclenchement précoce imposé : le coup part dès le début du geste (plus réactif), non modifiable
 const sauver = () => { try { localStorage.setItem('gyro-batterie', JSON.stringify(reglages)); } catch {} };
 
 // Sensibilité : réglable ici ou depuis l'ordinateur (curseur à droite = gestes plus légers)
@@ -96,8 +96,7 @@ function appliquerSeuil(seuil) {
 }
 appliquerSeuil(reglages.seuil);
 $('seuil').oninput = (e) => appliquerSeuil(Detecteur.sensibiliteVersSeuil(Number(e.target.value)));
-$('precoce').checked = reglages.precoce; afficherGain();
-$('precoce').onchange = (e) => { reglages.precoce = e.target.checked; gains.length = 0; appliquerSeuil(reglages.seuil); afficherGain(); };
+afficherGain();
 
 // Ce que l'ordinateur envoie : réglage de sensibilité, et (version multi) l'instrument de ce téléphone
 let affichage = null;   // { numero, couleur, noms: [son 1, son 2] }
