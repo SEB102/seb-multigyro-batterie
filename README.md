@@ -10,7 +10,7 @@ Prototype (étude de faisabilité). Petite sœur de [SEB-GYROBATTERIE](https://g
 
 **Téléphones** : chacun scanne le QR code affiché. **L'ordinateur et les téléphones doivent être connectés au même réseau Wi-Fi.**
 - iPhone : toucher « Toucher pour démarrer » puis autoriser « Mouvement ». Android : démarre tout seul.
-- La première fois : frapper 3 fois (calibration), puis jouer.
+- La première fois : **donner 3 coups secs**, comme avec une baguette, dans n'importe quel sens (calibration). Chaque coup reconnu s'affiche (● ○ ○), et c'est fini dès le 3e. Puis jouer.
 
 **Sur l'ordinateur**, chaque téléphone a sa carte : numéro, couleur, son 1, son 2 (mettre deux fois le même pour un son fixe), sensibilité. Le téléphone affiche son numéro et ses sons dans sa couleur. Il garde son identité : après une coupure il retrouve sa place et ses sons. Un téléphone silencieux depuis 4 s est marqué absent.
 
