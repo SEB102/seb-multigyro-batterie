@@ -22,6 +22,7 @@ const FICHIERS = {   // seuls fichiers servis
   '/gestes.js': ['gestes.js', 'text/javascript'],
   '/apprentissage.js': ['apprentissage.js', 'text/javascript'],
   '/jeu-gestes.js': ['jeu-gestes.js', 'text/javascript'],
+  '/gestes-defaut.js': ['gestes-defaut.js', 'text/javascript'],
   '/qrcode.js': ['qrcode.js', 'text/javascript'],
   '/liaison.js': ['liaison.js', 'text/javascript'],
   '/peerjs.min.js': ['peerjs.min.js', 'text/javascript'],
