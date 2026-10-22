@@ -55,15 +55,15 @@
     <button class="secondaire" id="oublier">Oublier les téléphones absents</button>
   </div>
   <div id="telephones"><div class="vide">Aucun téléphone pour l'instant</div></div>
-  <div class="doux">Chaque téléphone apprend 4 gestes (vers le bas, le haut, la droite, la gauche) ; chaque geste joue le son choisi sur sa carte (choisir le même son plusieurs fois est possible). Pendant l'apprentissage, l'ordinateur bipe pour guider : 1 bip l'écoute commence · 2 bips geste enregistré · 3 bips montants terminé.</div>
+  <div class="doux">Chaque téléphone apprend 4 gestes (vers le bas, le haut, la droite, la gauche) ; chaque geste joue le son choisi sur sa carte (choisir le même son plusieurs fois est possible). Pendant l'apprentissage, l'ordinateur bipe pour guider : 1 bip l'écoute commence · un petit bip aigu à chaque coup compté · 2 bips geste enregistré · 3 bips montants terminé.</div>
 </main>
 <footer class="cartouche">SEB-MULTIGYRO-BATTERIE · Sébastien Gay · Octobre 2026 · <a href="https://github.com/SEB102/seb-multigyro-batterie#readme" target="_blank" rel="noopener">Mode d'emploi</a> · <a href="https://github.com/SEB102/seb-multigyro-batterie/blob/main/LICENSE" target="_blank" rel="noopener">Licence CC BY-NC 4.0</a><br>Connexion : <a href="https://peerjs.com" target="_blank" rel="noopener">PeerJS</a> (MIT) · QR code : <a href="https://github.com/kazuhikoarase/qrcode-generator" target="_blank" rel="noopener">qrcode-generator</a> par Kazuhiko Arase (MIT)</footer>
 
-<script src="detecteur.js?v=20261021t"></script>
-<script src="sons.js?v=20261021t"></script>
-<script src="qrcode.js?v=20261021t"></script>
-<script src="peerjs.min.js?v=20261021t"></script>
-<script src="liaison.js?v=20261021t"></script>
+<script src="detecteur.js?v=20261022a"></script>
+<script src="sons.js?v=20261022a"></script>
+<script src="qrcode.js?v=20261022a"></script>
+<script src="peerjs.min.js?v=20261022a"></script>
+<script src="liaison.js?v=20261022a"></script>
 <script>
 const $ = (id) => document.getElementById(id);
 
@@ -83,7 +83,7 @@ function bip(frequence = 880, debut = 0, duree = 0.09) {
   g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.25, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + duree);
   o.connect(g).connect(ctx.destination); o.start(t); o.stop(t + duree + 0.02);
 }
-const BIPS = { debut: () => bip(880), gesteFini: () => { bip(660, 0); bip(660, 0.16); }, fin: () => { bip(523, 0); bip(659, 0.15); bip(784, 0.3, 0.18); } };
+const BIPS = { debut: () => bip(880), coup: () => bip(1320, 0, 0.04), gesteFini: () => { bip(660, 0); bip(660, 0.16); }, fin: () => { bip(523, 0); bip(659, 0.15); bip(784, 0.3, 0.18); } };
 
 // ---- Téléphones : numéro, couleur et sons gardés d'une fois sur l'autre (par identifiant de téléphone) ----
 const COULEURS = ['#e8643c', '#e8c43c', '#4cc38a', '#4c9be8', '#b07ce8', '#e85c9b', '#5fd0d0', '#a4d65e', '#e8964c', '#9aa4b8'];
