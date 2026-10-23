@@ -13,7 +13,10 @@
   // Mêmes gestes pour les trois apps (même adresse seb102.github.io) : appris une fois, valables partout
   // gyro-gestes-6 : mémoire des 3 gestes (22/10/2026 au soir) ; les apprentissages d'avant (gyro-gestes-5 et plus anciens, à
   // 4 gestes) sont ignorés : les exemples et l'attente par défaut s'appliquent dès l'ouverture
-  const CLE = 'gyro-gestes-6';
+  // gyro-gestes-7 (23/10/2026) : mémoire qui CUMULE les apprentissages (au plus MAX_APPRIS coups par geste, les plus récents),
+  // commune aux trois apps ; elle reprend celle de SOLO (gyro-solo-gestes-7, version 2026-10-23ab) si elle est vide. L'ancienne
+  // mémoire gyro-gestes-6 n'est pas reprise : l'apprentissage de SOLO du 23/10 au matin est déjà dans les exemples par défaut.
+  const CLE = 'gyro-gestes-7', CLE_SOLO = 'gyro-solo-gestes-7', MAX_APPRIS = 50;
   // Gaucher : téléphone dans la main gauche, tenu en miroir de la main droite (écran vers la paume, haut du téléphone du même
   // côté ; c'est donc l'autre grand côté qui est en bas). Ses mouvements sont l'image dans un miroir de ceux d'un droitier :
   // ramenés en droitier, la rotation autour de l'axe x du téléphone (vertical dans cette prise en main) est gardée, celles
@@ -21,7 +24,7 @@
   // P = symétrie de l'axe x). Les exemples (par défaut ou appris) restent en droitier ; le coup « gauche » se fait vers la droite.
   const miroir = (r, a) => [{ alpha: r.alpha, beta: typeof r.beta === 'number' ? -r.beta : r.beta, gamma: typeof r.gamma === 'number' ? -r.gamma : r.gamma },
     a && { x: typeof a.x === 'number' ? -a.x : a.x, y: a.y, z: a.z }];
-  const lire = () => { try { return JSON.parse(localStorage.getItem(CLE) || '{}'); } catch { return {}; } };
+  const lire = () => { try { return JSON.parse(localStorage.getItem(CLE) || localStorage.getItem(CLE_SOLO) || '{}'); } catch { return {}; } };
   const ecrire = (o) => { try { localStorage.setItem(CLE, JSON.stringify(o)); } catch {} };
 
   // nomDuSon(geste, i) : nom affiché (version multi : le son choisi sur l'ordinateur pour ce téléphone)
@@ -36,12 +39,15 @@
     const sansDefaut = gestes.filter((g) => !parDefautIds.has(g.id));
     const A_APPRENDRE = sansDefaut.length ? sansDefaut : gestes;
     const aApprendre = new Set(A_APPRENDRE.map((g) => g.id));
-    // exemples du jeu : ceux appris pour les gestes à apprendre remplacent les exemples par défaut de ces gestes ;
-    // un ancien apprentissage des 4 gestes ne garde que ses gestes à apprendre
-    const tousLesExemples = (appris) => {
-      const gardes = (appris || []).filter((e) => aApprendre.has(e.geste)), remplaces = new Set(gardes.map((e) => e.geste));
-      return [...parDefaut.filter((e) => !remplaces.has(e.geste)), ...gardes];
+    // exemples du jeu : les exemples par défaut PLUS tous les coups appris (SOLO : « Réapprendre » ajoute, il ne remplace plus)
+    const tousLesExemples = (appris) => [...parDefaut, ...(appris || []).filter((e) => aApprendre.has(e.geste))];
+    // cumul des apprentissages : anciens puis nouveaux, en gardant les MAX_APPRIS plus récents de chaque geste
+    const cumuler = (anciens, nouveaux) => {
+      const tous = [...(anciens || []).filter((e) => aApprendre.has(e.geste)), ...nouveaux], garde = [];
+      for (const g of gestes) garde.push(...tous.filter((e) => e.geste === g.id).slice(-MAX_APPRIS));
+      return garde;
     };
+    let nbExemples = 0;
     const historique = Gestes.creerHistorique(800);
     let declencheur = Gestes.creerDeclencheur({ seuil }), seuilActuel = seuil;
     let apprentissage = null, modele = null, attente = 30, timerFlash;
@@ -62,8 +68,9 @@
       if (e.type === 'fin') {
         biper('coup'); biper('fin');
         apprentissage = null;
-        const { precisions, attente: choix } = Apprentissage.choisirAttente(tousLesExemples(e.exemples));   // avec haut/bas par défaut
-        ecrire({ exemples: e.exemples, attente: choix });
+        const cumul = cumuler(lire().exemples, e.exemples);
+        const { precisions, attente: choix } = Apprentissage.choisirAttente(tousLesExemples(cumul));   // avec les exemples par défaut
+        ecrire({ exemples: cumul, attente: choix });
         charger();
         flash(texte('Appris !', `${precisions[Apprentissage.ATTENTES.indexOf(choix)]} % de gestes reconnus · à toi de jouer`), '');
       }
@@ -76,26 +83,35 @@
     }
     function charger() {
       const m = lire(), exemples = tousLesExemples(m.exemples);
+      nbExemples = exemples.length;
       if (!gestes.every((g) => exemples.some((e) => e.geste === g.id))) { modele = null; return false; }   // reste à apprendre
       const { attente: choix } = Apprentissage.choisirAttente(exemples);   // attente : réglée d'office, plus de choix à l'écran
       attente = Apprentissage.ATTENTES.includes(m.attente) ? m.attente : Apprentissage.ATTENTES.includes(attenteDefaut) ? attenteDefaut : choix;
+      const somme = exemples.filter((e) => e.geste === 'gauche').map((e) => Apprentissage.sensDuCoup(e.mesures, e.t))
+        .reduce((p, v) => { const n = Math.hypot(...v) || 1; return p.map((x, i) => x + v[i] / n); }, [0, 0, 0]), n = Math.hypot(...somme);
+      dirLaterale = n ? somme.map((x) => x / n) : null;
       modele = Gestes.entrainer(exemples.map((e) => ({ geste: e.geste, resume: Gestes.resumer(e.mesures, e.t, attente) })));
       return true;
     }
     // Retour muet pour gauche : le retour du poignet après un coup latéral est un mouvement en sens inverse,
     // presque aussi vif que le coup (iPhone, 22/10/2026 : 0,13 à 0,73 s après le coup) ; il jouerait « Oh ! ». Après un coup
     // vers la gauche, un mouvement en sens INVERSE dans les RETOUR_MUET ms ne sonne donc pas, quel que soit le son reconnu.
+    // « En sens inverse » = opposé à la direction APPRISE du geste (moyenne de ses exemples), à cos < −0,6 : le coup latéral joué
+    // vite est souvent mêlé au mouvement précédent, et le comparer à lui-même rendait muets des coups bas/haut presque
+    // perpendiculaires (SOLO, iPhone 23/10 : 7 coups sur 51, cos −0,22 à +0,32 avec la direction apprise ; les vrais retours sont
+    // à −0,98 en médiane, 171 sur 180 sous −0,6).
     // Haut et bas ne sont pas concernés (leurs retours sont nettement plus faibles et passent bien).
     const RETOUR_MUET = 600;
-    let dernierLateral = null;   // { t, sens } du dernier coup vers la gauche joué
+    let dernierLateral = null;   // { t } du dernier coup vers la gauche joué
+    let dirLaterale = null;      // direction apprise du coup vers la gauche (vecteur unité), calculée au chargement
     // delai : temps à attendre avant de reconnaître le geste (l'attente choisie ; 0 si ses mesures sont déjà là)
     function jouer(t, sens, delai = attente) {
-      const muet = dernierLateral && t - dernierLateral.t < RETOUR_MUET && sens.reduce((s, x, i) => s + x * dernierLateral.sens[i], 0) < 0;
+      const muet = dernierLateral && dirLaterale && t - dernierLateral.t < RETOUR_MUET && sens.reduce((s, x, i) => s + x * dirLaterale[i], 0) < -0.6 * Math.hypot(...sens);
       if (muet) return;
       setTimeout(() => {
         const id = modele.classer(Gestes.resumer(historique.mesures, t, attente));
         const i = gestes.findIndex((g) => g.id === id), g = gestes[i];
-        dernierLateral = id === 'gauche' ? { t, sens } : null;
+        dernierLateral = id === 'gauche' ? { t } : null;
         sonner(g, Apprentissage.force(historique.mesures, t, seuilActuel));
         $('flash').textContent = nomDuSon(g, i).toUpperCase();
         $('flash').style.background = g.couleur; $('flash').style.color = '#111';
@@ -162,7 +178,7 @@
     function changerSeuil(s) { seuilActuel = s; declencheur = Gestes.creerDeclencheur({ seuil: s }); }
     // au démarrage : jeu si des gestes sont déjà appris, sinon apprentissage
     function commencer() { if (charger()) flash(texte('Joue !', `les ${gestes.length} gestes sont prêts`), ''); else apprendre(); }
-    return { surMouvement, apprendre, charger, commencer, changerSeuil, changerMoment, changerMain, get gaucher() { return gaucher; }, get moment() { return moment; }, get enApprentissage() { return !!apprentissage; }, get attente() { return attente; }, A_APPRENDRE,
+    return { surMouvement, apprendre, charger, commencer, changerSeuil, changerMoment, changerMain, get gaucher() { return gaucher; }, get moment() { return moment; }, get enApprentissage() { return !!apprentissage; }, get attente() { return attente; }, get nbExemples() { return nbExemples; }, A_APPRENDRE,
       exemplesEnCours: () => (apprentissage ? apprentissage.exemples : []) };
   }
 
